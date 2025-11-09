@@ -61,47 +61,52 @@ const RegisterPage = () => {
   const simulateVerification = async () => {
     setVerificationLoading(true);
     
-    // 模拟与正版数据库比对
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    try {
+      // 准备表单数据
+      const formData = new FormData();
+      formData.append('collectionName', form.getFieldValue('collectionName'));
+      formData.append('description', form.getFieldValue('description') || '');
+      formData.append('contractAddress', form.getFieldValue('contractAddress'));
+      formData.append('twitterLink', form.getFieldValue('twitterLink') || '');
 
-    // 模拟验证结果 - 随机生成成功或失败
-    const isSuccess = Math.random() > 0.3; // 70% 成功率
-
-    if (isSuccess) {
-      setVerificationResult({
-        success: true,
-        message: '原创性验证通过！未发现明显冲突。',
-        collectionName: form.getFieldValue('collectionName'),
+      // 添加上传的文件
+      fileList.forEach((file, index) => {
+        if (file.originFileObj) {
+          formData.append(`mediaFiles`, file.originFileObj);
+        }
       });
-    } else {
-      // 获取上传的图片URL
-      let submittedImageUrl = '/register_2.png';
-      if (fileList.length > 0 && fileList[0].originFileObj) {
-        submittedImageUrl = URL.createObjectURL(fileList[0].originFileObj);
+
+      const response = await fetch('/api/register/verify', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
+      const data = await response.json();
+      
       setVerificationResult({
-        success: false,
-        message: '登记失败：发现潜在冲突！',
-        originalImage: '/register_1.png',
-        fakeImage: submittedImageUrl,
-        originalCollection: 'Bored Ape Yacht Club',
-        fakeCollection: form.getFieldValue('collectionName') || '您提交的收藏',
-        conflicts: [
-          {
-            type: 'PCF',
-            description: '您的名称 "Bored Ape 3D" 与已登记的 "Bored Ape Yacht Club" 文本印记高度相似。',
-          },
-          {
-            type: 'ACV',
-            description: '您提交的媒体样本与已登记的 "CryptoPunks" 视觉指纹高度相似。',
-          },
-        ],
+        success: data.success,
+        message: data.message,
+        collectionName: data.collectionName || form.getFieldValue('collectionName'),
+        originalImage: data.originalImage,
+        fakeImage: data.fakeImage,
+        originalCollection: data.originalCollection,
+        fakeCollection: data.fakeCollection || form.getFieldValue('collectionName'),
+        conflicts: data.conflicts || [],
       });
+    } catch (error) {
+      console.error('Verification failed:', error);
+      Modal.error({
+        title: '验证失败',
+        content: `无法完成验证: ${error.message}`,
+      });
+    } finally {
+      setVerificationLoading(false);
+      setResultModalVisible(true);
     }
-
-    setVerificationLoading(false);
-    setResultModalVisible(true);
   };
 
   const handleFinish = () => {
