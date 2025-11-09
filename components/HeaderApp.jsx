@@ -11,7 +11,7 @@ const HeaderApp = () => {
       </Link>
       <ul className='flex items-center space-x-8'>
         <li>
-          <Link href={"/dashboard"} className='hover:text-blue-600 text-gray-700 font-medium transition-colors'>
+          <Link href={"/statics"} className='hover:text-blue-600 text-gray-700 font-medium transition-colors'>
             数据概览
           </Link>
         </li>
