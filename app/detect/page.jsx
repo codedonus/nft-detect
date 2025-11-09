@@ -21,35 +21,50 @@ const DetectPage = () => {
   const simulateDetection = async () => {
     setLoading(true);
     
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      // 准备表单数据
+      const formData = new FormData();
+      formData.append('nftName', nftName);
+      formData.append('mediaUrl', mediaUrl);
 
-    // 模拟检测结果
-    const mockResult = {
-      overallStatus: 'confirmed_fake', // 'confirmed_fake' | 'highly_suspicious' | 'no_match'
-      overallStatusText: '已确认伪造品',
-      originalImage: '/detect_1.png',
-      fakeImage: '/detect_2.png',
-      originalCollection: 'Bored Ape Yacht Club',
-      fakeCollection: 'Bored Ape 3D',
-      pcfResult: {
-        status: 'high_risk',
-        statusText: '高风险',
-        riskScore: 0.85,
-        analysis: '输入的文本 "Bored Ape 3D" 与正版库中的 "Bored Ape Yacht Club" (来自 https://opensea.io/collection/boredapeyachtclub) 存在 "部分词语重叠"。',
-      },
-      acvResult: {
-        status: 'matched_fake',
-        statusText: '匹配伪造品',
-        fingerprintMatch: true,
-        analysis: '提供的媒体文件与 "Bored Ape Yacht Club" (来自 https://opensea.io/collection/boredapeyachtclub) 。',
-      },
-      conclusion: '此 NFT 在文本和视觉上均与已知的正版收藏高度一致，极有可能是伪造品。',
-    };
+      // 添加上传的文件
+      if (fileList.length > 0 && fileList[0].originFileObj) {
+        formData.append('mediaFile', fileList[0].originFileObj);
+      }
 
-    setDetectionResult(mockResult);
-    setLoading(false);
-    setResultModalVisible(true);
+      const response = await fetch('/api/detect', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      setDetectionResult({
+        overallStatus: data.overallStatus,
+        overallStatusText: data.overallStatusText,
+        originalImage: data.originalImage,
+        fakeImage: data.fakeImage,
+        originalCollection: data.originalCollection,
+        fakeCollection: data.fakeCollection || nftName,
+        pcfResult: data.pcfResult,
+        acvResult: data.acvResult,
+        conclusion: data.conclusion,
+      });
+      
+      setResultModalVisible(true);
+    } catch (error) {
+      console.error('Detection failed:', error);
+      Modal.error({
+        title: '检测失败',
+        content: `无法完成检测: ${error.message}`,
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getStatusTag = (status) => {

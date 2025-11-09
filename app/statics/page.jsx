@@ -1,38 +1,70 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, Statistic, Row, Col, Spin } from 'antd';
+import { Card, Statistic, Row, Col, Spin, Button } from 'antd';
 import { BarChartOutlined, FileTextOutlined, WarningOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import Image from 'next/image';
 
 const DashboardPage = () => {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [stats, setStats] = useState({
-    registeredCollections: 102,
-    indexedFakes: 12221,
+    registeredCollections: 0,
+    indexedFakes: 0,
     processedRequests24h: 0,
     interceptedHighRisk24h: 0,
   });
 
   useEffect(() => {
-    // 模拟加载数据
-    const timer = setTimeout(() => {
-      setStats({
-        registeredCollections: 102,
-        indexedFakes: 12221,
-        processedRequests24h: 1847,
-        interceptedHighRisk24h: 342,
-      });
-      setLoading(false);
-    }, 1000);
+    const fetchStatistics = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const response = await fetch('/api/statistics', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
 
-    return () => clearTimeout(timer);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        setStats({
+          registeredCollections: data.registeredCollections || 0,
+          indexedFakes: data.indexedFakes || 0,
+          processedRequests24h: data.processedRequests24h || 0,
+          interceptedHighRisk24h: data.interceptedHighRisk24h || 0,
+        });
+      } catch (err) {
+        console.error('Failed to fetch statistics:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStatistics();
   }, []);
 
   if (loading) {
     return (
       <div className="flex justify-center items-center h-96">
         <Spin size="large" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center h-96">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">加载数据失败: {error}</p>
+          <Button onClick={() => window.location.reload()}>重试</Button>
+        </div>
       </div>
     );
   }
