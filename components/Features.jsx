@@ -16,7 +16,7 @@ const Features = () => {
 						['github', null],
 						['external', null],
 					]}
-                    images={['/images/doc.png','/images/doc.png','/images/doc.png']}
+                    images={['/pcf.png','/pcf.png']}
 				/>
 				<div className='my-3 h-[1px] w-full bg-neutral-300'></div>
                 <Project
@@ -27,7 +27,7 @@ const Features = () => {
                         ['github', null],
                         ['external', null],
                     ]}
-                    images={['/images/doc.png','/images/doc.png']}
+                    images={['/acv.png','/acv.png']}
                     />
                 <div className='my-3 h-[1px] w-full bg-neutral-300'></div>
                 <Project
@@ -38,7 +38,7 @@ const Features = () => {
                         ['github', null],
                         ['external', null],
                     ]}
-                    images={['/images/doc.png','/images/doc.png','/images/doc.png']}
+                    images={['/largeData.jpg','/largeData.jpg']}
                 />
                 <div className='my-3 h-[1px] w-full bg-neutral-300'></div>
 				<Project
@@ -54,7 +54,7 @@ const Features = () => {
 						['github', null],
 						['external', null],
 					]}
-                    images={['/images/doc.png','/images/doc.png']}
+                    images={['/pna.png','/pna.png']}
 				/>
 			</div>
 		</div>

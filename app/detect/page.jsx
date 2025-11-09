@@ -28,21 +28,21 @@ const DetectPage = () => {
     const mockResult = {
       overallStatus: 'confirmed_fake', // 'confirmed_fake' | 'highly_suspicious' | 'no_match'
       overallStatusText: '已确认伪造品',
-      originalImage: 'https://via.placeholder.com/400x400/4CAF50/FFFFFF?text=正版NFT',
-      fakeImage: 'https://via.placeholder.com/400x400/F44336/FFFFFF?text=伪造品NFT',
+      originalImage: '/detect_1.png',
+      fakeImage: '/detect_2.png',
       originalCollection: 'Bored Ape Yacht Club',
       fakeCollection: 'Bored Ape 3D',
       pcfResult: {
         status: 'high_risk',
         statusText: '高风险',
         riskScore: 0.85,
-        analysis: '输入的文本 "Bored Ape 3D" 与正版库中的 "Bored Ape Yacht Club" (来自 https://opensea.io/collection/boredapeyachtclub) 存在 "部分词语重叠" [cite: 229, 39]。',
+        analysis: '输入的文本 "Bored Ape 3D" 与正版库中的 "Bored Ape Yacht Club" (来自 https://opensea.io/collection/boredapeyachtclub) 存在 "部分词语重叠"。',
       },
       acvResult: {
         status: 'matched_fake',
         statusText: '匹配伪造品',
         fingerprintMatch: true,
-        analysis: '提供的媒体文件与 "Bored Ape Yacht Club" (来自 https://opensea.io/collection/boredapeyachtclub) 的视觉指纹匹配 [cite: 40, 936, 944]。',
+        analysis: '提供的媒体文件与 "Bored Ape Yacht Club" (来自 https://opensea.io/collection/boredapeyachtclub) 。',
       },
       conclusion: '此 NFT 在文本和视觉上均与已知的正版收藏高度一致，极有可能是伪造品。',
     };

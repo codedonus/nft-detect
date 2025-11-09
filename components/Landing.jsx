@@ -34,7 +34,7 @@ const Landing = ({scrollTo}) => {
                     基于PCF和ACV的两阶段检测框架，实现92%文本检测准确率和88%视觉验证准确率
                 </p>
                 <div className="flex gap-4 flex-wrap justify-center">
-                    <Link href="/dashboard">
+                    <Link href="/statics">
                         <button className="rounded-xl px-8 py-3 text-neutral-100 font-[500] transition tracking-wide outline-none bg-transparent border-2 border-neutral-100 hover:bg-white/10 shadow-lg hover:shadow-xl">
                             数据概览
                         </button>
