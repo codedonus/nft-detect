@@ -75,7 +75,7 @@ const RegisterPage = () => {
       });
     } else {
       // 获取上传的图片URL
-      let submittedImageUrl = 'https://via.placeholder.com/400x400/F44336/FFFFFF?text=您提交的NFT';
+      let submittedImageUrl = '/register_2.png';
       if (fileList.length > 0 && fileList[0].originFileObj) {
         submittedImageUrl = URL.createObjectURL(fileList[0].originFileObj);
       }
@@ -83,18 +83,18 @@ const RegisterPage = () => {
       setVerificationResult({
         success: false,
         message: '登记失败：发现潜在冲突！',
-        originalImage: 'https://via.placeholder.com/400x400/4CAF50/FFFFFF?text=已登记正版',
+        originalImage: '/register_1.png',
         fakeImage: submittedImageUrl,
         originalCollection: 'Bored Ape Yacht Club',
         fakeCollection: form.getFieldValue('collectionName') || '您提交的收藏',
         conflicts: [
           {
             type: 'PCF',
-            description: '您的名称 "Bored Ape 3D" 与已登记的 "Bored Ape Yacht Club" 文本印记高度相似 [cite: 39, 108, 110]。',
+            description: '您的名称 "Bored Ape 3D" 与已登记的 "Bored Ape Yacht Club" 文本印记高度相似。',
           },
           {
             type: 'ACV',
-            description: '您提交的媒体样本与已登记的 "CryptoPunks" 视觉指纹高度相似 [cite: 40, 232, 233]。',
+            description: '您提交的媒体样本与已登记的 "CryptoPunks" 视觉指纹高度相似。',
           },
         ],
       });
