@@ -32,15 +32,23 @@ const AttackVectorsChart = ({ data }) => {
         text: '伪造品数量',
       },
     },
-    tooltip: {
-      showMarkers: false,
-    },
     label: {
       position: 'top',
+      textBaseline: 'bottom',
       style: {
         fontSize: 12,
       },
+      // 兼容不同版本的 Column：有的传整行数据，有的直接传数值
+      formatter: (item) => {
+        if (item && typeof item === 'object') {
+          const v = item.value ?? item.y ?? item.val;
+          return v != null ? `${v}` : '';
+        }
+        return item != null ? `${item}` : '';
+      },
     },
+    // 使用默认 tooltip 行为：hover 时展示 label + 数值
+    tooltip: {},
   };
   return <Column {...config} />;
 };
@@ -143,7 +151,7 @@ const BetaVictimsChart = ({ data }) => {
             fill: '#9ec5ff',
             fillOpacity: 0.22,
           },
-          shape: 'smooth',
+          shapeField: 'smooth',
         },
         // 50% 区间带（更深）
         {
@@ -156,7 +164,7 @@ const BetaVictimsChart = ({ data }) => {
             fill: '#5f9be3',
             fillOpacity: 0.32,
           },
-          shape: 'smooth',
+          shapeField: 'smooth',
         },
         // 中位数平滑曲线
         {
@@ -169,21 +177,21 @@ const BetaVictimsChart = ({ data }) => {
             stroke: '#166534',
             lineWidth: 3,
           },
-          shape: 'smooth',
+          shapeField: 'smooth',
         },
         // 中位数上的点
-        {
-          type: 'point',
-          encode: {
-            x: 'x',
-            y: 'mu_boot_median',
-          },
-          style: {
-            r: 2,
-            fill: '#166534',
-            stroke: '#166534',
-          },
-        },
+        // {
+        //   type: 'point',
+        //   encode: {
+        //     x: 'x',
+        //     y: 'mu_boot_median',
+        //   },
+        //   style: {
+        //     r: 2,
+        //     fill: '#166534',
+        //     stroke: '#166534',
+        //   },
+        // },
       ],
     });
 
