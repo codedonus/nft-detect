@@ -8,8 +8,11 @@
     "start": "next start"
   },
   "dependencies": {
+    "@antv/g2": "^5.2.0",
     "@ant-design/icons": "^6.1.0",
     "@ant-design/nextjs-registry": "^1.2.0",
+    "@ant-design/plots": "^2.6.6",
+    "@supabase/supabase-js": "^2.48.0",
     "antd": "^5.28.0",
     "embla-carousel-autoplay": "^8.6.0",
     "embla-carousel-react": "^8.6.0",
