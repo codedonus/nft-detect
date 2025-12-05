@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Card, Input, Button, Upload, Spin, Modal, Tag, Divider, Alert, Row, Col, Image } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Card, Input, Button, Upload, Spin, Modal, Tag, Divider, Alert, Row, Col, Image, message } from 'antd';
 import { SearchOutlined, UploadOutlined, CheckCircleOutlined, CloseCircleOutlined, WarningOutlined } from '@ant-design/icons';
 
 const { TextArea } = Input;
@@ -9,23 +9,144 @@ const { TextArea } = Input;
 const DetectPage = () => {
   const [loading, setLoading] = useState(false);
   const [nftName, setNftName] = useState('');
+  const [contractAddress, setContractAddress] = useState('');
   const [mediaUrl, setMediaUrl] = useState('');
   const [fileList, setFileList] = useState([]);
   const [resultModalVisible, setResultModalVisible] = useState(false);
   const [detectionResult, setDetectionResult] = useState(null);
+  const [messageApi, contextHolder] = message.useMessage();
+  const [mediaUrlError, setMediaUrlError] = useState('');
+  const [uploadedImageUrl, setUploadedImageUrl] = useState('');
+  const [contractAddressError, setContractAddressError] = useState('');
+
+  // 以太坊地址正则：0x + 40个十六进制字符
+  const ethereumAddressRegex = /^0x[a-fA-F0-9]{40}$/;
+
+  // 纯函数：检查地址格式是否正确
+  const isValidContractAddress = (address) => {
+    if (!address) return false;
+    return ethereumAddressRegex.test(address);
+  };
+
+  const validateContractAddress = (address) => {
+    if (!address) {
+      setContractAddressError('');
+      return false;
+    }
+    if (!ethereumAddressRegex.test(address)) {
+      setContractAddressError('请输入有效的以太坊合约地址（0x + 40个十六进制字符）');
+      return false;
+    }
+    setContractAddressError('');
+    return true;
+  };
+
+  const handleContractAddressChange = (e) => {
+    const value = e.target.value;
+    setContractAddress(value);
+    validateContractAddress(value);
+  };
+
+  // 检查是否可以开始检测：名称、合约地址（且格式正确）、媒体URL（格式正确）或上传文件（二选一）
+  const canStartDetection = () => {
+    const hasValidUrl = mediaUrl.trim() && isValidMediaUrl(mediaUrl);
+    const hasFile = fileList.length > 0 && fileList[0].originFileObj;
+    // 互斥：URL 与 文件不可同时存在
+    const hasMedia = (hasValidUrl && !hasFile) || (hasFile && !mediaUrl.trim());
+    return nftName.trim() && contractAddress.trim() && isValidContractAddress(contractAddress) && hasMedia && !mediaUrlError;
+  };
+
+  // 验证URL是否是媒体URL
+  const isValidMediaUrl = (url) => {
+    if (!url) return false;
+    try {
+      const urlObj = new URL(url);
+      const pathname = urlObj.pathname.toLowerCase();
+      const mediaExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.mp4', '.webm', '.ogg', '.mov', '.avi'];
+      return mediaExtensions.some(ext => pathname.endsWith(ext));
+    } catch {
+      return false;
+    }
+  };
+
+  const handleMediaUrlChange = (e) => {
+    const value = e.target.value;
+    setMediaUrl(value);
+    // URL 模式：清空上传
+    if (value) {
+      if (uploadedImageUrl && uploadedImageUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(uploadedImageUrl);
+      }
+      setUploadedImageUrl('');
+      setFileList([]);
+    }
+    if (value && !isValidMediaUrl(value)) {
+      setMediaUrlError('请输入有效的媒体URL（图片或视频）');
+    } else {
+      setMediaUrlError('');
+    }
+  };
+
+  // 清理ObjectURL，避免内存泄漏
+  useEffect(() => {
+    return () => {
+      if (uploadedImageUrl && uploadedImageUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(uploadedImageUrl);
+      }
+    };
+  }, [uploadedImageUrl]);
 
   const handleUpload = (info) => {
+    // 上传模式：清空 URL
+    setMediaUrl('');
+    setMediaUrlError('');
+
+    // 清理之前的URL
+    if (uploadedImageUrl && uploadedImageUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(uploadedImageUrl);
+    }
+
     setFileList(info.fileList);
+    // 如果有上传的文件，创建预览URL
+    if (info.fileList.length > 0 && info.fileList[0].originFileObj) {
+      const file = info.fileList[0].originFileObj;
+      // 检查文件类型
+      if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+        const url = URL.createObjectURL(file);
+        setUploadedImageUrl(url);
+      } else {
+        setUploadedImageUrl('');
+        messageApi.warning('请上传图片或视频文件');
+      }
+    } else {
+      setUploadedImageUrl('');
+    }
   };
 
   const simulateDetection = async () => {
+    // 再次验证合约地址格式
+    if (!validateContractAddress(contractAddress)) {
+      messageApi.error('请检查合约地址格式');
+      return;
+    }
+
+    // 验证媒体URL
+    if (mediaUrl && !isValidMediaUrl(mediaUrl)) {
+      messageApi.error('请输入有效的媒体URL（图片或视频）');
+      return;
+    }
+
     setLoading(true);
+    const hideMessage = messageApi.loading('正在运行检测模型，请稍候...', 0);
     
     try {
       // 准备表单数据
       const formData = new FormData();
       formData.append('nftName', nftName);
+      formData.append('contractAddress', contractAddress);
       formData.append('mediaUrl', mediaUrl);
+      const detectionMode = fileList.length > 0 ? 'upload' : 'url';
+      formData.append('detectionMode', detectionMode);
 
       // 添加上传的文件
       if (fileList.length > 0 && fileList[0].originFileObj) {
@@ -38,16 +159,39 @@ const DetectPage = () => {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        let errorMessage = `HTTP错误! 状态码: ${response.status}`;
+        try {
+          const cloned = response.clone();
+          const errorData = await cloned.json();
+          if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+        } catch (eJson) {
+          try {
+            const text = await response.text();
+            if (text) {
+              errorMessage = text;
+            }
+          } catch (eText) {
+            console.error('无法解析错误响应:', eJson, eText);
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
+      
+      // 确定使用的图片：如果后端返回 'UPLOADED_FILE'，使用上传文件的预览URL
+      // 否则使用后端返回的URL或默认图片
+      const userImage = data.fakeImage === 'UPLOADED_FILE' 
+        ? (uploadedImageUrl || mediaUrl || '/detect_2.png')
+        : (data.fakeImage || uploadedImageUrl || mediaUrl || '/detect_2.png');
       
       setDetectionResult({
         overallStatus: data.overallStatus,
         overallStatusText: data.overallStatusText,
         originalImage: data.originalImage,
-        fakeImage: data.fakeImage,
+        fakeImage: userImage, // 使用用户上传的图片
         originalCollection: data.originalCollection,
         fakeCollection: data.fakeCollection || nftName,
         pcfResult: data.pcfResult,
@@ -58,11 +202,10 @@ const DetectPage = () => {
       setResultModalVisible(true);
     } catch (error) {
       console.error('Detection failed:', error);
-      Modal.error({
-        title: '检测失败',
-        content: `无法完成检测: ${error.message}`,
-      });
+      hideMessage();
+      messageApi.error(error.message || '检测失败，请稍后重试');
     } finally {
+      hideMessage();
       setLoading(false);
     }
   };
@@ -104,6 +247,7 @@ const DetectPage = () => {
 
   return (
     <div className="max-w-4xl mx-auto">
+      {contextHolder}
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-800">单个 NFT 检测</h1>
         <p className="text-gray-600 mt-2">
@@ -116,11 +260,11 @@ const DetectPage = () => {
         <div className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              1. 粘贴NFT的名称或描述 (用于PCF文本风险评估):
+              1. 粘贴NFT的名称 (用于PCF文本风险评估):
             </label>
-            <TextArea
+            <Input
               rows={4}
-              placeholder="例如: Bored Ape 3D"
+              placeholder="例如: Bored Ape"
               value={nftName}
               onChange={(e) => setNftName(e.target.value)}
               className="w-full"
@@ -129,19 +273,43 @@ const DetectPage = () => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              2. 粘贴媒体 URL (图片/视频) 或上传文件 (用于ACV视觉指纹验证):
+              2. 粘贴NFT的合约地址:
+            </label>
+            <Input
+              placeholder="例如: 0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D"
+              value={contractAddress}
+              onChange={handleContractAddressChange}
+              status={contractAddressError ? 'error' : ''}
+            />
+            {contractAddressError && (
+              <div className="text-red-500 text-sm mt-1">{contractAddressError}</div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              3. 粘贴媒体 URL (图片/视频) 或上传文件 (用于ACV视觉指纹验证):
             </label>
             <div className="flex flex-col gap-3">
-              <Input
-                placeholder="https://example.com/nft-image.png"
-                value={mediaUrl}
-                onChange={(e) => setMediaUrl(e.target.value)}
-              />
+              <div>
+                <Input
+                  placeholder="https://example.com/nft-image.png"
+                  value={mediaUrl}
+              onChange={handleMediaUrlChange}
+                  status={mediaUrlError ? 'error' : ''}
+              disabled={fileList.length > 0}
+                />
+                {mediaUrlError && (
+                  <div className="text-red-500 text-sm mt-1">{mediaUrlError}</div>
+                )}
+              </div>
               <Upload
                 fileList={fileList}
                 onChange={handleUpload}
                 beforeUpload={() => false}
                 maxCount={1}
+                accept="image/*,video/*"
+            disabled={!!mediaUrl.trim()}
               >
                 <Button icon={<UploadOutlined />}>上传文件</Button>
               </Upload>
@@ -155,7 +323,7 @@ const DetectPage = () => {
               icon={<SearchOutlined />}
               onClick={simulateDetection}
               loading={loading}
-              disabled={!nftName && !mediaUrl && fileList.length === 0}
+              disabled={!canStartDetection()}
             >
               开始检测
             </Button>
