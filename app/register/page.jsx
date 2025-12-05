@@ -12,6 +12,7 @@ const RegisterPage = () => {
   const [loading, setLoading] = useState(false);
   const [verificationLoading, setVerificationLoading] = useState(false);
   const [fileList, setFileList] = useState([]);
+  const [previewUrl, setPreviewUrl] = useState('');
   const [resultModalVisible, setResultModalVisible] = useState(false);
   const [verificationResult, setVerificationResult] = useState(null);
 
@@ -54,8 +55,24 @@ const RegisterPage = () => {
     setCurrentStep(currentStep - 1);
   };
 
+  // 生成预览并清理旧URL
   const handleUpload = (info) => {
+    if (previewUrl && previewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(previewUrl);
+    }
     setFileList(info.fileList);
+
+    if (info.fileList.length > 0 && info.fileList[0].originFileObj) {
+      const file = info.fileList[0].originFileObj;
+      if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+        const url = URL.createObjectURL(file);
+        setPreviewUrl(url);
+      } else {
+        setPreviewUrl('');
+      }
+    } else {
+      setPreviewUrl('');
+    }
   };
 
   const simulateVerification = async () => {
@@ -87,12 +104,18 @@ const RegisterPage = () => {
 
       const data = await response.json();
       
+      // 使用上传的预览作为 fakeImage，当后端返回占位符时替换
+      const fakeImageUrl =
+        data.fakeImage === 'UPLOADED_FILE'
+          ? (previewUrl || '')
+          : data.fakeImage;
+
       setVerificationResult({
         success: data.success,
         message: data.message,
         collectionName: data.collectionName || form.getFieldValue('collectionName'),
         originalImage: data.originalImage,
-        fakeImage: data.fakeImage,
+        fakeImage: fakeImageUrl,
         originalCollection: data.originalCollection,
         fakeCollection: data.fakeCollection || form.getFieldValue('collectionName'),
         conflicts: data.conflicts || [],
@@ -114,6 +137,10 @@ const RegisterPage = () => {
     // 重置表单
     form.resetFields();
     setFileList([]);
+    if (previewUrl && previewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl('');
     setCurrentStep(0);
     setVerificationResult(null);
   };
