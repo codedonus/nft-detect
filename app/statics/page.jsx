@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Card, Statistic, Row, Col, Spin, Button } from 'antd';
+import { Card, Statistic, Row, Col, Spin, Button, Modal, List, Avatar, Typography, Select } from 'antd';
 import {
   BarChartOutlined,
   FileTextOutlined,
@@ -65,14 +65,13 @@ const DiscoverySourcesChart = ({ data }) => {
 
   const config = {
     data: transformed,
-    // 使用分组柱状图
-    group: true,
     xField: 'platform',
     yField: 'value',
-    seriesField: 'type',
-    height: 360,
-    // 按来源类型着色，并固定 4 种颜色顺序
     colorField: 'type',
+    group: {
+      padding: 0,
+    },
+    height: 360,
     color: ['#4c6ef5', '#22c55e', '#f97316', '#a855f7'],
     xAxis: {
       title: {
@@ -91,12 +90,6 @@ const DiscoverySourcesChart = ({ data }) => {
     },
     legend: {
       position: 'top',
-    },
-    tooltip: {
-      formatter: (item) => ({
-        name: item.type,
-        value: `${(item.value * 100).toFixed(1)}%`,
-      }),
     },
   };
 
@@ -224,6 +217,40 @@ const DashboardPage = () => {
     betaVictims: [],
   });
 
+  // Modal 相关 state
+  const [genuineModalOpen, setGenuineModalOpen] = useState(false);
+  const [fakeModalOpen, setFakeModalOpen] = useState(false);
+  const [requestModalOpen, setRequestModalOpen] = useState(false);
+  const [interceptModalOpen, setInterceptModalOpen] = useState(false);
+
+  const [genuineData, setGenuineData] = useState([]);
+  const [fakeData, setFakeData] = useState([]);
+  const [requestData, setRequestData] = useState([]);
+  const [interceptData, setInterceptData] = useState([]);
+
+  const [genuineLoading, setGenuineLoading] = useState(false);
+  const [fakeLoading, setFakeLoading] = useState(false);
+  const [requestLoading, setRequestLoading] = useState(false);
+  const [interceptLoading, setInterceptLoading] = useState(false);
+
+  // 月份选择器相关 state
+  const [selectedMonth, setSelectedMonth] = useState('average'); // 默认显示综合平均
+  const [monthlyChartsLoading, setMonthlyChartsLoading] = useState(false);
+  
+  // 生成月份选项（综合平均 + 2024-12 到 2025-11）
+  const monthOptions = [
+    { value: 'average', label: '综合平均' },
+  ];
+  for (let year = 2024; year <= 2025; year++) {
+    const startMonth = year === 2024 ? 12 : 1;
+    const endMonth = year === 2025 ? 11 : 12;
+    for (let month = startMonth; month <= endMonth; month++) {
+      const monthStr = `${year}-${String(month).padStart(2, '0')}`;
+      const monthLabel = `${year}年${month}月`;
+      monthOptions.push({ value: monthStr, label: monthLabel });
+    }
+  }
+
   useEffect(() => {
     const fetchStatistics = async () => {
       try {
@@ -264,7 +291,118 @@ const DashboardPage = () => {
     };
 
     fetchStatistics();
+    // 初始加载时获取综合平均数据
+    fetchMonthlyCharts('average');
   }, []);
+
+  // 获取月度图表数据
+  const fetchMonthlyCharts = async (month) => {
+    setMonthlyChartsLoading(true);
+    try {
+      const response = await fetch(`/api/charts-monthly?month=${month}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      setCharts((prev) => ({
+        ...prev,
+        attackVectors: data.attackVectors || prev.attackVectors,
+        discoverySources: data.discoverySources || prev.discoverySources,
+      }));
+    } catch (err) {
+      console.error('Failed to fetch monthly charts:', err);
+    } finally {
+      setMonthlyChartsLoading(false);
+    }
+  };
+
+  // 月份选择器变化处理
+  const handleMonthChange = (month) => {
+    setSelectedMonth(month);
+    fetchMonthlyCharts(month);
+  };
+
+  // 获取各表数据的函数
+  const fetchGenuineData = async () => {
+    setGenuineLoading(true);
+    try {
+      const response = await fetch('/api/genuine');
+      const data = await response.json();
+      setGenuineData(data || []);
+    } catch (err) {
+      console.error('Failed to fetch genuine data:', err);
+    } finally {
+      setGenuineLoading(false);
+    }
+  };
+
+  const fetchFakeData = async () => {
+    setFakeLoading(true);
+    try {
+      const response = await fetch('/api/fake');
+      const data = await response.json();
+      setFakeData(data || []);
+    } catch (err) {
+      console.error('Failed to fetch fake data:', err);
+    } finally {
+      setFakeLoading(false);
+    }
+  };
+
+  const fetchRequestData = async () => {
+    setRequestLoading(true);
+    try {
+      const response = await fetch('/api/request-24h');
+      const data = await response.json();
+      setRequestData(data || []);
+    } catch (err) {
+      console.error('Failed to fetch request data:', err);
+    } finally {
+      setRequestLoading(false);
+    }
+  };
+
+  const fetchInterceptData = async () => {
+    setInterceptLoading(true);
+    try {
+      const response = await fetch('/api/intercept-24h');
+      const data = await response.json();
+      setInterceptData(data || []);
+    } catch (err) {
+      console.error('Failed to fetch intercept data:', err);
+    } finally {
+      setInterceptLoading(false);
+    }
+  };
+
+  // Modal 打开时的处理
+  const handleGenuineClick = () => {
+    setGenuineModalOpen(true);
+    if (genuineData.length === 0) {
+      fetchGenuineData();
+    }
+  };
+
+  const handleFakeClick = () => {
+    setFakeModalOpen(true);
+    if (fakeData.length === 0) {
+      fetchFakeData();
+    }
+  };
+
+  const handleRequestClick = () => {
+    setRequestModalOpen(true);
+    if (requestData.length === 0) {
+      fetchRequestData();
+    }
+  };
+
+  const handleInterceptClick = () => {
+    setInterceptModalOpen(true);
+    if (interceptData.length === 0) {
+      fetchInterceptData();
+    }
+  };
 
   if (loading) {
     return (
@@ -298,7 +436,11 @@ const DashboardPage = () => {
       {/* Widget 4: 实时数据 */}
       <Row gutter={[16, 16]} className="mb-6">
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card
+            hoverable
+            onClick={handleGenuineClick}
+            style={{ cursor: 'pointer' }}
+          >
             <Statistic
               title="已登记正版收藏"
               value={stats.registeredCollections}
@@ -308,7 +450,11 @@ const DashboardPage = () => {
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card
+            hoverable
+            onClick={handleFakeClick}
+            style={{ cursor: 'pointer' }}
+          >
             <Statistic
               title="已索引伪造品"
               value={stats.indexedFakes}
@@ -318,7 +464,11 @@ const DashboardPage = () => {
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card
+            hoverable
+            onClick={handleRequestClick}
+            style={{ cursor: 'pointer' }}
+          >
             <Statistic
               title="已处理检测请求 (24h)"
               value={stats.processedRequests24h}
@@ -327,7 +477,11 @@ const DashboardPage = () => {
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card
+            hoverable
+            onClick={handleInterceptClick}
+            style={{ cursor: 'pointer' }}
+          >
             <Statistic
               title="已拦截高风险 NFT (24h)"
               value={stats.interceptedHighRisk24h}
@@ -339,12 +493,26 @@ const DashboardPage = () => {
       </Row>
 
       {/* Widget 1: 伪造品的主要攻击向量 */}
-      <Card title="伪造品的主要攻击向量" className="mb-6">
-        <div className="flex justify-center items-center mb-4">
-          <div className="w-full">
-            <AttackVectorsChart data={charts.attackVectors} />
+      <Card 
+        title="伪造品的主要攻击向量"
+        className="mb-6"
+        extra={
+          <Select
+            value={selectedMonth}
+            onChange={handleMonthChange}
+            options={monthOptions}
+            style={{ width: 150 }}
+            loading={monthlyChartsLoading}
+          />
+        }
+      >
+        <Spin spinning={monthlyChartsLoading}>
+          <div className="flex justify-center items-center mb-4">
+            <div className="w-full">
+              <AttackVectorsChart data={charts.attackVectors} />
+            </div>
           </div>
-        </div>
+        </Spin>
         <div className="mt-4 p-4 bg-blue-50 rounded-lg">
           <p className="text-sm text-gray-700">
             <strong>洞察：</strong>实证研究发现，在通过视觉复制(Art Counterfeit)创建的伪造品中，98%同时结合了文本模仿(Str Counterfeit)，
@@ -354,12 +522,26 @@ const DashboardPage = () => {
       </Card>
 
       {/* Widget 2: 用户如何发现 NFT? */}
-      <Card title="用户如何发现 NFT?" className="mb-6">
-        <div className="flex justify-center items-center mb-4">
-          <div className="w-full">
-            <DiscoverySourcesChart data={charts.discoverySources} />
+      <Card 
+        title="用户如何发现 NFT?"
+        className="mb-6"
+        extra={
+          <Select
+            value={selectedMonth}
+            onChange={handleMonthChange}
+            options={monthOptions}
+            style={{ width: 150 }}
+            loading={monthlyChartsLoading}
+          />
+        }
+      >
+        <Spin spinning={monthlyChartsLoading}>
+          <div className="flex justify-center items-center mb-4">
+            <div className="w-full">
+              <DiscoverySourcesChart data={charts.discoverySources} />
+            </div>
           </div>
-        </div>
+        </Spin>
         <div className="mt-4 p-4 bg-green-50 rounded-lg">
           <p className="text-sm text-gray-700">
             <strong>洞察：</strong>根据Similarweb数据，超过86%的用户通过直接访问平台域名来访问NFT市场，而只有约11%通过外部链接访问特定NFT页面。
@@ -382,6 +564,166 @@ const DashboardPage = () => {
           </p>
         </div>
       </Card>
+
+      {/* Modal: 已登记正版收藏 */}
+      <Modal
+        title="已登记正版收藏"
+        open={genuineModalOpen}
+        onCancel={() => setGenuineModalOpen(false)}
+        footer={null}
+        width={800}
+      >
+        <Spin spinning={genuineLoading}>
+          <List
+            itemLayout="horizontal"
+            dataSource={genuineData}
+            renderItem={(item) => (
+              <List.Item>
+                <List.Item.Meta
+                  avatar={<Avatar src={item.image_url} shape="square" size={64} />}
+                  title={<Typography.Text strong>{item.nft_name}</Typography.Text>}
+                  description={
+                    <div>
+                      <div style={{ marginBottom: 4 }}>
+                        <Typography.Text type="secondary">Token ID: </Typography.Text>
+                        <Typography.Text copyable code>
+                          {item.token_id}
+                        </Typography.Text>
+                      </div>
+                      <div>
+                        <Typography.Text type="secondary">合约地址: </Typography.Text>
+                        <Typography.Text copyable code>
+                          {item.contract_address}
+                        </Typography.Text>
+                      </div>
+                    </div>
+                  }
+                />
+              </List.Item>
+            )}
+          />
+        </Spin>
+      </Modal>
+
+      {/* Modal: 已索引伪造品 */}
+      <Modal
+        title="已索引伪造品"
+        open={fakeModalOpen}
+        onCancel={() => setFakeModalOpen(false)}
+        footer={null}
+        width={800}
+      >
+        <Spin spinning={fakeLoading}>
+          <List
+            itemLayout="horizontal"
+            dataSource={fakeData}
+            renderItem={(item) => (
+              <List.Item>
+                <List.Item.Meta
+                  avatar={<Avatar src={item.image_url} shape="square" size={64} />}
+                  title={<Typography.Text strong>{item.nft_name}</Typography.Text>}
+                  description={
+                    <div>
+                      <div style={{ marginBottom: 4 }}>
+                        <Typography.Text type="secondary">Token ID: </Typography.Text>
+                        <Typography.Text copyable code>
+                          {item.token_id}
+                        </Typography.Text>
+                      </div>
+                      <div>
+                        <Typography.Text type="secondary">合约地址: </Typography.Text>
+                        <Typography.Text copyable code>
+                          {item.contract_address}
+                        </Typography.Text>
+                      </div>
+                    </div>
+                  }
+                />
+              </List.Item>
+            )}
+          />
+        </Spin>
+      </Modal>
+
+      {/* Modal: 已处理检测请求 (24h) */}
+      <Modal
+        title="已处理检测请求 (24h)"
+        open={requestModalOpen}
+        onCancel={() => setRequestModalOpen(false)}
+        footer={null}
+        width={800}
+      >
+        <Spin spinning={requestLoading}>
+          <List
+            itemLayout="horizontal"
+            dataSource={requestData}
+            renderItem={(item) => (
+              <List.Item>
+                <List.Item.Meta
+                  avatar={<Avatar src={item.image_url} shape="square" size={64} />}
+                  title={<Typography.Text strong>{item.nft_name}</Typography.Text>}
+                  description={
+                    <div>
+                      <div style={{ marginBottom: 4 }}>
+                        <Typography.Text type="secondary">Token ID: </Typography.Text>
+                        <Typography.Text copyable code>
+                          {item.token_id}
+                        </Typography.Text>
+                      </div>
+                      <div>
+                        <Typography.Text type="secondary">合约地址: </Typography.Text>
+                        <Typography.Text copyable code>
+                          {item.contract_address}
+                        </Typography.Text>
+                      </div>
+                    </div>
+                  }
+                />
+              </List.Item>
+            )}
+          />
+        </Spin>
+      </Modal>
+
+      {/* Modal: 已拦截高风险 NFT (24h) */}
+      <Modal
+        title="已拦截高风险 NFT (24h)"
+        open={interceptModalOpen}
+        onCancel={() => setInterceptModalOpen(false)}
+        footer={null}
+        width={800}
+      >
+        <Spin spinning={interceptLoading}>
+          <List
+            itemLayout="horizontal"
+            dataSource={interceptData}
+            renderItem={(item) => (
+              <List.Item>
+                <List.Item.Meta
+                  avatar={<Avatar src={item.image_url} shape="square" size={64} />}
+                  title={<Typography.Text strong>{item.nft_name}</Typography.Text>}
+                  description={
+                    <div>
+                      <div style={{ marginBottom: 4 }}>
+                        <Typography.Text type="secondary">Token ID: </Typography.Text>
+                        <Typography.Text copyable code>
+                          {item.token_id}
+                        </Typography.Text>
+                      </div>
+                      <div>
+                        <Typography.Text type="secondary">合约地址: </Typography.Text>
+                        <Typography.Text copyable code>
+                          {item.contract_address}
+                        </Typography.Text>
+                      </div>
+                    </div>
+                  }
+                />
+              </List.Item>
+            )}
+          />
+        </Spin>
+      </Modal>
     </div>
   );
 };
