@@ -109,7 +109,7 @@ const RegisterPage = () => {
         data.fakeImage === 'UPLOADED_FILE'
           ? (previewUrl || '')
           : data.fakeImage;
-
+      
       setVerificationResult({
         success: data.success,
         message: data.message,
