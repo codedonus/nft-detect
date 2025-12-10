@@ -18,7 +18,7 @@ export async function GET() {
   }
 
   const { data, error } = await supabase
-    .from('request_24h')
+    .from('request_24h_p')
     .select('id, nft_name, contract_address, token_id, image_url')
     .order('created_at', { ascending: false })
     .limit(10);
